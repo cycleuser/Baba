@@ -1,0 +1,82 @@
+[build-system]
+requires = ["scikit-build-core>=0.9.0", "cffi>=1.16.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "baba-gui"
+version = "0.1.0"
+description = "A lightweight, cross-platform C GUI framework with Python bindings"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+dependencies = ["cffi>=1.16.0"]
+keywords = ["gui", "vulkan", "cross-platform", "lightweight"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov", "black", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/cycleuser/Baba"
+Documentation = "https://github.com/cycleuser/Baba#readme"
+Repository = "https://github.com/cycleuser/Baba.git"
+Issues = "https://github.com/cycleuser/Baba/issues"
+
+[tool.scikit-build]
+cmake.version = ">=3.20"
+ninja.version = ">=1.11"
+build.targets = ["baba"]
+wheel.packages = ["python/baba"]
+install.components = ["python"]
+sdist.exclude = ["tests", "examples", "docs"]
+
+[tool.scikit-build.cmake.define]
+BABA_BUILD_EXAMPLES = "OFF"
+BABA_BUILD_TESTS = "OFF"
+BABA_BUILD_PYTHON = "ON"
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-*"
+skip = "pp* *-musllinux_*"
+test-requires = "pytest"
+test-command = "pytest {project}/python/tests -v"
+
+[tool.cibuildwheel.macos]
+archs = "x86_64 arm64"
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
+before-all = [
+    "brew install vulkan-loader vulkan-headers molten-vk",
+]
+
+[tool.cibuildwheel.linux]
+archs = "x86_64"
+before-all = [
+    "apt-get update && apt-get install -y libvulkan-dev libx11-dev libwayland-dev",
+]
+
+[tool.cibuildwheel.windows]
+archs = "AMD64"
+before-all = [
+    "choco install vulkan-sdk -y",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I", "UP"]

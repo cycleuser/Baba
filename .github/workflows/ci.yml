@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Vulkan SDK
+        run: |
+          brew install vulkan-loader vulkan-headers molten-vk
+      
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      
+      - name: Build
+        run: cmake --build build --config Release -j
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: baba-macos
+          path: build/libbaba.a
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvulkan-dev libx11-dev libwayland-dev
+      
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      
+      - name: Build
+        run: cmake --build build --config Release -j
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: baba-linux
+          path: build/libbaba.a
+
+build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        toolchain: [mingw, msvc]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup MSYS2 (MinGW)
+        if: matrix.toolchain == 'mingw'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-vulkan
+      
+      - name: Build with MinGW
+        if: matrix.toolchain == 'mingw'
+        shell: msys2 {0}
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+      
+      - name: Install Vulkan SDK (MSVC)
+        if: matrix.toolchain == 'msvc'
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-sdk.exe" -OutFile vulkan-sdk.exe
+          Start-Process -FilePath ".\vulkan-sdk.exe" -ArgumentList "--accept-licenses --default-answer --confirm-command install" -NoNewWindow -Wait
+      
+      - name: Build with MSVC
+        if: matrix.toolchain == 'msvc'
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+      
+      - name: Upload artifact (MinGW)
+        if: matrix.toolchain == 'mingw'
+        uses: actions/upload-artifact@v4
+        with:
+          name: baba-windows-mingw
+          path: build/libbaba.a
+      
+      - name: Upload artifact (MSVC)
+        if: matrix.toolchain == 'msvc'
+        uses: actions/upload-artifact@v4
+        with:
+          name: baba-windows-msvc
+          path: build/Release/baba.lib
+
+  test-python:
+    needs: [build-macos]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Vulkan SDK
+        run: |
+          brew install vulkan-loader vulkan-headers molten-vk
+      
+      - name: Install Python dependencies
+        run: pip install cffi pytest
+      
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: baba-macos
+          path: build
+      
+      - name: Run Python tests
+        run: pytest python/tests -v
