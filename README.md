@@ -349,10 +349,22 @@ See [C Development Guide](docs/C_DEVELOPMENT.md) for details.
 
 ```bash
 # Unix (macOS/Linux)
-./build_native.sh
+./build_all.sh
 
 # Windows
-build_native.bat
+build_all.bat
+```
+
+This builds the library for the **current platform**. To build for **all platforms** (macOS, Linux, Windows) from a single machine:
+
+```bash
+# Install Zig for cross-compilation
+brew install zig          # macOS
+scoop install zig         # Windows
+sudo apt install zig      # Linux
+
+# Then run build script
+./build_all.sh            # Will build all platforms
 ```
 
 ### Build & Upload to PyPI
@@ -366,6 +378,44 @@ upload_pypi.bat
 
 # Or use Python script
 python build_pypi.py --upload
+```
+
+### GitHub Actions (Recommended for Multi-Platform)
+
+For production releases, use GitHub Actions to build on native platforms:
+
+```yaml
+# .github/workflows/build.yml
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./build_all.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-macos
+          path: dist/lib/macos/*.a
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./build_all.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-linux
+          path: dist/lib/linux-x64/*.a
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: build_all.bat
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-windows
+          path: dist/lib/windows-x64/*.a
 ```
 
 ## License

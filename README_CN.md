@@ -349,10 +349,22 @@ clang main.c -I"$INCLUDE" -L"$LIB" -lbaba \
 
 ```bash
 # Unix (macOS/Linux)
-./build_native.sh
+./build_all.sh
 
 # Windows
-build_native.bat
+build_all.bat
+```
+
+这将构建**当前平台**的库。要从单台机器构建**所有平台**（macOS、Linux、Windows）：
+
+```bash
+# 安装 Zig 进行交叉编译
+brew install zig          # macOS
+scoop install zig         # Windows
+sudo apt install zig      # Linux
+
+# 然后运行构建脚本
+./build_all.sh            # 将构建所有平台
 ```
 
 ### 构建并上传到PyPI
@@ -366,6 +378,44 @@ upload_pypi.bat
 
 # 或使用Python脚本
 python build_pypi.py --upload
+```
+
+### GitHub Actions（推荐用于多平台构建）
+
+对于生产发布，建议使用 GitHub Actions 在原生平台上构建：
+
+```yaml
+# .github/workflows/build.yml
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./build_all.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-macos
+          path: dist/lib/macos/*.a
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./build_all.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-linux
+          path: dist/lib/linux-x64/*.a
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: build_all.bat
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-windows
+          path: dist/lib/windows-x64/*.a
 ```
 
 ## 许可证
