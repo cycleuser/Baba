@@ -85,34 +85,56 @@ def load_baba():
     import os
     import sys
     import ctypes.util
+    from pathlib import Path
 
-    lib_name = "baba"
-
+    script_dir = Path(__file__).parent
+    
+    lib_paths = []
+    
     if sys.platform == "darwin":
-        lib_name = "libbaba.dylib"
+        lib_names = ["libbaba.dylib", "libbaba_macos.dylib"]
+        for name in lib_names:
+            lib_paths.extend([
+                script_dir / "lib" / name,
+                script_dir / name,
+                script_dir.parent / "build" / name,
+            ])
     elif sys.platform == "win32":
-        lib_name = "baba.dll"
+        lib_names = ["baba.dll", "libbaba_windows.dll"]
+        for name in lib_names:
+            lib_paths.extend([
+                script_dir / "lib" / name,
+                script_dir / name,
+                script_dir.parent / "build" / name,
+                script_dir.parent / "build" / "Release" / name,
+            ])
     else:
-        lib_name = "libbaba.so"
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    lib_paths = [
-        os.path.join(script_dir, "..", "..", "build", lib_name),
-        os.path.join(script_dir, "lib", lib_name),
-        os.path.join(script_dir, lib_name),
-    ]
-
+        lib_names = ["libbaba.so", "libbaba_linux.so"]
+        for name in lib_names:
+            lib_paths.extend([
+                script_dir / "lib" / name,
+                script_dir / name,
+                script_dir.parent / "build" / name,
+            ])
+    
     if hasattr(sys, "prefix"):
-        lib_paths.insert(0, os.path.join(sys.prefix, "lib", lib_name))
-
+        prefix_lib = Path(sys.prefix) / "lib"
+        for name in lib_names if 'lib_names' in dir() else ["libbaba"]:
+            lib_paths.insert(0, prefix_lib / name)
+    
     for path in lib_paths:
-        if os.path.exists(path):
-            return ffi.dlopen(path)
-
+        if path.exists():
+            return ffi.dlopen(str(path))
+    
     system_lib = ctypes.util.find_library("baba")
     if system_lib:
         return ffi.dlopen(system_lib)
-
+    
+    searched = "\n".join(f"  - {p}" for p in lib_paths)
     raise RuntimeError(
-        f"Could not find Baba library. Searched paths:\n" + "\n".join(f"  - {p}" for p in lib_paths)
+        f"Could not find Baba library.\n"
+        f"Searched paths:\n{searched}\n\n"
+        f"To use Baba GUI, you need to either:\n"
+        f"1. Install from PyPI: pip install baba-gui\n"
+        f"2. Build from source with Vulkan SDK installed\n"
     )

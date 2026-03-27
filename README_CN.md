@@ -19,6 +19,7 @@
 - [macOS构建指南](docs/MACOS_BUILD_CN.md) - Homebrew/Vulkan SDK安装
 - [架构说明](docs/ARCHITECTURE_CN.md) - 项目架构与设计
 - [使用教程](docs/TUTORIAL_CN.md) - 快速入门指南
+- [C开发指南](docs/C_DEVELOPMENT.md) - 使用Baba进行C GUI开发
 
 [English](README.md)
 
@@ -320,6 +321,52 @@ jobs:
 | Linux | X11 | ✅ 完整支持 |
 | Linux | Wayland | ✅ 完整支持 |
 | Windows | Win32 | ✅ 完整支持 |
+
+## C开发
+
+`pip install baba-gui` 后，可用于C GUI开发：
+
+```bash
+# 获取开发路径
+python -c "import baba; print(baba.get_include_dir())"  # 头文件
+python -c "import baba; print(baba.get_lib_path())"     # 库文件
+```
+
+```bash
+# 编译C程序 (macOS示例)
+INCLUDE=$(python -c "import baba; print(baba.get_include_dir())")
+LIB=$(python -c "import baba; import os; print(os.path.dirname(baba.get_lib_path()))")
+
+clang main.c -I"$INCLUDE" -L"$LIB" -lbaba \
+    -framework Cocoa -framework Metal -lvulkan -o myapp
+```
+
+详见 [C开发指南](docs/C_DEVELOPMENT.md)。
+
+## 构建与发布
+
+### 构建原生库
+
+```bash
+# Unix (macOS/Linux)
+./build_native.sh
+
+# Windows
+build_native.bat
+```
+
+### 构建并上传到PyPI
+
+```bash
+# Unix (macOS/Linux)
+./upload_pypi.sh
+
+# Windows
+upload_pypi.bat
+
+# 或使用Python脚本
+python build_pypi.py --upload
+```
 
 ## 许可证
 

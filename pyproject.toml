@@ -1,6 +1,6 @@
 [build-system]
-requires = ["scikit-build-core>=0.9.0", "cffi>=1.16.0"]
-build-backend = "scikit_build_core.build"
+requires = ["setuptools>=61.0", "wheel", "cffi>=1.16.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "baba-gui"
@@ -35,18 +35,11 @@ Documentation = "https://github.com/cycleuser/Baba#readme"
 Repository = "https://github.com/cycleuser/Baba.git"
 Issues = "https://github.com/cycleuser/Baba/issues"
 
-[tool.scikit-build]
-cmake.version = ">=3.20"
-ninja.version = ">=1.11"
-build.targets = ["baba"]
-wheel.packages = ["python/baba"]
-install.components = ["python"]
-sdist.exclude = ["tests", "examples", "docs"]
+[tool.setuptools.packages.find]
+where = ["python"]
 
-[tool.scikit-build.cmake.define]
-BABA_BUILD_EXAMPLES = "OFF"
-BABA_BUILD_TESTS = "OFF"
-BABA_BUILD_PYTHON = "ON"
+[tool.setuptools.package-data]
+baba = ["include/**/*", "lib/**/*"]
 
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-*"
@@ -58,19 +51,35 @@ test-command = "pytest {project}/python/tests -v"
 archs = "x86_64 arm64"
 environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
 before-all = [
-    "brew install vulkan-loader vulkan-headers molten-vk",
+    "brew install vulkan-loader vulkan-headers molten-vk cmake ninja",
+    "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF",
+    "cmake --build build",
+    "mkdir -p python/baba/lib python/baba/include",
+    "cp build/libbaba.a python/baba/lib/libbaba_macos.a",
+    "cp -r dist/include/* python/baba/include/",
 ]
 
 [tool.cibuildwheel.linux]
 archs = "x86_64"
 before-all = [
-    "apt-get update && apt-get install -y libvulkan-dev libx11-dev libwayland-dev",
+    "apt-get update && apt-get install -y libvulkan-dev libx11-dev libwayland-dev cmake ninja-build",
+    "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF",
+    "cmake --build build",
+    "mkdir -p python/baba/lib python/baba/include",
+    "cp build/libbaba.a python/baba/lib/libbaba_linux.a",
+    "cp -r dist/include/* python/baba/include/",
 ]
 
 [tool.cibuildwheel.windows]
 archs = "AMD64"
 before-all = [
-    "choco install vulkan-sdk -y",
+    "choco install vulkan-sdk cmake ninja -y",
+    "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF",
+    "cmake --build build",
+    "if not exist python\\baba\\lib mkdir python\\baba\\lib",
+    "if not exist python\\baba\\include mkdir python\\baba\\include",
+    "copy build\\libbaba.a python\\baba\\lib\\libbaba_windows.a",
+    "xcopy /e /i /y dist\\include\\* python\\baba\\include\\",
 ]
 
 [tool.black]

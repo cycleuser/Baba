@@ -19,6 +19,7 @@ A lightweight, cross-platform C GUI framework using Vulkan for rendering.
 - [macOS Build Guide](docs/MACOS_BUILD.md) - Homebrew/Vulkan SDK installation
 - [Architecture](docs/ARCHITECTURE.md) - Project architecture and design
 - [Tutorial](docs/TUTORIAL.md) - Quick start guide
+- [C Development Guide](docs/C_DEVELOPMENT.md) - Using Baba for C GUI development
 
 [中文文档](README_CN.md)
 
@@ -320,6 +321,52 @@ jobs:
 | Linux | X11 | ✅ Full Support |
 | Linux | Wayland | ✅ Full Support |
 | Windows | Win32 | ✅ Full Support |
+
+## C Development
+
+After `pip install baba-gui`, you can use Baba for C GUI development:
+
+```bash
+# Get development paths
+python -c "import baba; print(baba.get_include_dir())"  # Headers
+python -c "import baba; print(baba.get_lib_path())"     # Library
+```
+
+```bash
+# Compile your C app (macOS example)
+INCLUDE=$(python -c "import baba; print(baba.get_include_dir())")
+LIB=$(python -c "import baba; import os; print(os.path.dirname(baba.get_lib_path()))")
+
+clang main.c -I"$INCLUDE" -L"$LIB" -lbaba \
+    -framework Cocoa -framework Metal -lvulkan -o myapp
+```
+
+See [C Development Guide](docs/C_DEVELOPMENT.md) for details.
+
+## Building & Publishing
+
+### Build Native Library
+
+```bash
+# Unix (macOS/Linux)
+./build_native.sh
+
+# Windows
+build_native.bat
+```
+
+### Build & Upload to PyPI
+
+```bash
+# Unix (macOS/Linux)
+./upload_pypi.sh
+
+# Windows
+upload_pypi.bat
+
+# Or use Python script
+python build_pypi.py --upload
+```
 
 ## License
 
