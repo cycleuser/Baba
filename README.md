@@ -345,39 +345,59 @@ See [C Development Guide](docs/C_DEVELOPMENT.md) for details.
 
 ## Building & Publishing
 
-### Build Native Library
+### Build Native Library (Current Platform)
 
 ```bash
 # Unix (macOS/Linux)
 ./build_all.sh
 
-# Windows
-build_all.bat
+# Windows (MSYS2 MinGW)
+./build_all.sh
 ```
 
-This builds the library for the **current platform**. To build for **all platforms** (macOS, Linux, Windows) from a single machine:
+This builds the library for the **current platform only**.
 
-```bash
-# Install Zig for cross-compilation
-brew install zig          # macOS
-scoop install zig         # Windows
-sudo apt install zig      # Linux
+### Cross-Platform Builds
 
-# Then run build script
-./build_all.sh            # Will build all platforms
+For production releases, use **GitHub Actions** to build on all platforms:
+
+1. Push to `main` branch or create a release
+2. GitHub Actions builds macOS, Linux, and Windows versions
+3. Artifacts are combined and published to PyPI
+
+To trigger a PyPI release:
+1. Go to GitHub → Releases → Draft a new release
+2. Tag the release (e.g., `v0.1.2`)
+3. Publish - GitHub Actions will build and upload to PyPI
+
+### Manual Multi-Platform Build
+
+If you need to build all platforms locally:
+
+1. **macOS**: Run on macOS machine
+2. **Linux**: Run on Linux machine or use Docker
+3. **Windows**: Run on Windows with MSYS2 MinGW
+
+Then manually copy libraries to `python/baba/lib/`:
+```
+python/baba/lib/
+├── libbaba_macos.a
+├── libbaba_linux.a
+└── libbaba_windows.a
 ```
 
-### Build & Upload to PyPI
+### Build & Upload to PyPI (Manual)
 
 ```bash
-# Unix (macOS/Linux)
-./upload_pypi.sh
+# Build native library
+./build_all.sh
 
-# Windows
-upload_pypi.bat
+# Build Python package
+pip install build twine
+python -m build
 
-# Or use Python script
-python build_pypi.py --upload
+# Upload to PyPI
+twine upload dist/*
 ```
 
 ### GitHub Actions (Recommended for Multi-Platform)

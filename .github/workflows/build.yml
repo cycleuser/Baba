@@ -1,0 +1,122 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          brew install vulkan-loader vulkan-headers molten-vk cmake ninja
+      
+      - name: Build
+        run: ./build_all.sh
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib-macos
+          path: |
+            dist/lib/macos/*.a
+            dist/include/
+            python/baba/lib/*.a
+            python/baba/include/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build \
+            libvulkan-dev libx11-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxi-dev libwayland-dev wayland-protocols
+      
+      - name: Build
+        run: ./build_all.sh
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib-linux
+          path: |
+            dist/lib/linux-x64/*.a
+            dist/include/
+            python/baba/lib/*.a
+            python/baba/include/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-vulkan
+      
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF
+          cmake --build build
+          mkdir -p dist/lib/windows-x64
+          mkdir -p python/baba/lib
+          cp build/libbaba.a dist/lib/windows-x64/
+          cp build/libbaba.a python/baba/lib/libbaba_windows.a
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib-windows
+          path: |
+            dist/lib/windows-x64/*.a
+            python/baba/lib/*.a
+
+  publish:
+    needs: [build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Prepare package
+        run: |
+          mkdir -p python/baba/lib python/baba/include
+          cp artifacts/lib-macos/python/baba/lib/*.a python/baba/lib/ || true
+          cp artifacts/lib-linux/python/baba/lib/*.a python/baba/lib/ || true
+          cp artifacts/lib-windows/python/baba/lib/*.a python/baba/lib/ || true
+          cp -r artifacts/lib-macos/python/baba/include/* python/baba/include/ || true
+      
+      - name: Build package
+        run: |
+          pip install build twine
+          python -m build
+      
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload dist/*

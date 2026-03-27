@@ -2,7 +2,7 @@ from ._core import App, Window, Widget, Button, Label, TextBox, Color, Rect, Vec
 from pathlib import Path
 import sys
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __all__ = [
     "App",
     "Window",

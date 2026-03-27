@@ -345,77 +345,59 @@ clang main.c -I"$INCLUDE" -L"$LIB" -lbaba \
 
 ## 构建与发布
 
-### 构建原生库
+### 构建原生库（当前平台）
 
 ```bash
 # Unix (macOS/Linux)
 ./build_all.sh
 
-# Windows
-build_all.bat
+# Windows (MSYS2 MinGW)
+./build_all.sh
 ```
 
-这将构建**当前平台**的库。要从单台机器构建**所有平台**（macOS、Linux、Windows）：
+这只会构建**当前平台**的库。
+
+### 跨平台构建
+
+对于生产发布，使用 **GitHub Actions** 在所有平台上构建：
+
+1. 推送到 `main` 分支或创建发布
+2. GitHub Actions 在 macOS、Linux、Windows 上分别构建
+3. 构建产物合并后发布到 PyPI
+
+触发 PyPI 发布：
+1. 进入 GitHub → Releases → Draft a new release
+2. 创建标签（如 `v0.1.2`）
+3. 发布 - GitHub Actions 会自动构建并上传到 PyPI
+
+### 手动多平台构建
+
+如果需要本地构建所有平台：
+
+1. **macOS**: 在 macOS 机器上运行
+2. **Linux**: 在 Linux 机器上运行或使用 Docker
+3. **Windows**: 在 Windows 上使用 MSYS2 MinGW 运行
+
+然后手动复制库文件到 `python/baba/lib/`：
+```
+python/baba/lib/
+├── libbaba_macos.a
+├── libbaba_linux.a
+└── libbaba_windows.a
+```
+
+### 构建并上传到PyPI（手动）
 
 ```bash
-# 安装 Zig 进行交叉编译
-brew install zig          # macOS
-scoop install zig         # Windows
-sudo apt install zig      # Linux
+# 构建原生库
+./build_all.sh
 
-# 然后运行构建脚本
-./build_all.sh            # 将构建所有平台
-```
+# 构建Python包
+pip install build twine
+python -m build
 
-### 构建并上传到PyPI
-
-```bash
-# Unix (macOS/Linux)
-./upload_pypi.sh
-
-# Windows
-upload_pypi.bat
-
-# 或使用Python脚本
-python build_pypi.py --upload
-```
-
-### GitHub Actions（推荐用于多平台构建）
-
-对于生产发布，建议使用 GitHub Actions 在原生平台上构建：
-
-```yaml
-# .github/workflows/build.yml
-jobs:
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: ./build_all.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lib-macos
-          path: dist/lib/macos/*.a
-
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: ./build_all.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lib-linux
-          path: dist/lib/linux-x64/*.a
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: build_all.bat
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lib-windows
-          path: dist/lib/windows-x64/*.a
+# 上传到PyPI
+twine upload dist/*
 ```
 
 ## 许可证
