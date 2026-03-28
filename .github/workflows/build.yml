@@ -86,19 +86,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Cache Vulkan SDK
-        id: cache-vulkan
-        uses: actions/cache@v4
-        with:
-          path: C:\VulkanSDK
-          key: vulkan-sdk-1.3.296
-      
-      - name: Install Vulkan SDK
-        if: steps.cache-vulkan.outputs.cache-hit != 'true'
+      - name: Install Vulkan Headers (minimal)
         run: |
-          $installer = "https://sdk.lunarg.com/sdk/download/1.3.296.0/windows/VulkanSDK-1.3.296.0-Installer.exe"
-          Invoke-WebRequest -Uri $installer -OutFile vulkan-sdk.exe
-          Start-Process -FilePath vulkan-sdk.exe -ArgumentList "/S /P C:\VulkanSDK" -NoNewWindow -Wait
+          Invoke-WebRequest -Uri "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.296.zip" -OutFile vulkan-headers.zip
+          Expand-Archive -Path vulkan-headers.zip -DestinationPath C:\vulkan-headers
+          echo "VULKAN_INCLUDE=C:\vulkan-headers\Vulkan-Headers-1.3.296\include" >> $env:GITHUB_ENV
       
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
@@ -110,11 +102,10 @@ jobs:
       - name: Build library
         shell: msys2 {0}
         run: |
-          export VULKAN_SDK=/c/VulkanSDK
           mkdir -p python/baba/lib python/baba/include
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
             -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF \
-            -DCMAKE_PREFIX_PATH="$VULKAN_SDK"
+            -DVulkan_INCLUDE_DIRS="/c/vulkan-headers/Vulkan-Headers-1.3.296/include"
           cmake --build build
           cp build/libbaba.a python/baba/lib/libbaba_windows.a
           cp src/*.h python/baba/include/
