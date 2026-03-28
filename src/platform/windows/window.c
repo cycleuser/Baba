@@ -81,7 +81,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-static const wchar_t* WINDOW_CLASS_NAME = L"BabaWindowClass";
+static const char* WINDOW_CLASS_NAME = "BabaWindowClass";
 static bool g_class_registered = false;
 
 static void RegisterWindowClass(HINSTANCE hinstance) {
