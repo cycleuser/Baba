@@ -5,7 +5,7 @@
 #include <vulkan/vulkan_win32.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../platform/window.h"
+#include "../window.h"
 
 struct BabaPlatformWindow {
     HWND hwnd;
