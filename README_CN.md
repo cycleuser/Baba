@@ -68,26 +68,18 @@ make
 
 **Windows:**
 
-推荐使用MinGW-w64或Clang，无需Visual Studio：
+推荐使用MSYS2 + MinGW-w64：
 
 ```powershell
-# 方式1: MSYS2 + MinGW-w64 (推荐)
-# 1. 安装MSYS2: https://www.msys2.org/
-# 2. 在MSYS2 MINGW64终端中:
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-vulkan
+# 通过winget安装依赖
+winget install MSYS2.MSYS2
+winget install KhronosGroup.VulkanSDK
 
+# 打开MSYS2 MINGW64终端：
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
+
+# 构建
 cmake -B build -G Ninja
-cmake --build build
-
-# 方式2: Scoop + MinGW
-scoop install mingw cmake ninja
-# 安装Vulkan SDK: https://vulkan.lunarg.com/
-cmake -B build -G Ninja -DVULKAN_SDK="C:/VulkanSDK/1.x.x.x"
-cmake --build build
-
-# 方式3: Zig作为C编译器 (最轻量)
-scoop install zig cmake ninja
-cmake -B build -G Ninja -DCMAKE_C_COMPILER=zig cc
 cmake --build build
 ```
 
