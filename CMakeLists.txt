@@ -99,7 +99,9 @@ target_compile_definitions(baba PRIVATE
     $<$<CONFIG:Debug>:BABA_DEBUG>
 )
 
-target_link_libraries(baba PRIVATE ${Vulkan_LIBRARIES})
+if(Vulkan_LIBRARIES)
+    target_link_libraries(baba PRIVATE ${Vulkan_LIBRARIES})
+endif()
 
 if(APPLE)
     target_link_libraries(baba PRIVATE
