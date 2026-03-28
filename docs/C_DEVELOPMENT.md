@@ -71,8 +71,28 @@ $INCLUDE_DIR = python -c "import baba; print(baba.get_include_dir())"
 $LIB_DIR = python -c "import baba; import os; print(os.path.dirname(baba.get_lib_path()))"
 
 # Compile
-gcc main.c -I"$INCLUDE_DIR" -L"$LIB_DIR" -lbaba `
+gcc main.c -I"$INCLUDE_DIR" -L"$LIB_DIR" -lbaba_windows `
     -lvulkan -luser32 -lgdi32 -o myapp.exe
+```
+
+**Note**: The library name is `baba_windows` on Windows. If using the `.lib` file:
+```powershell
+gcc main.c -I"$INCLUDE_DIR" -L"$LIB_DIR" baba_windows.lib `
+    -lvulkan -luser32 -lgdi32 -o myapp.exe
+```
+
+## Example Projects
+
+Complete working examples are available in the `examples/` directory:
+
+- **examples/windows/** - Windows C example with build script
+- **examples/demo.c** - Basic demo
+- **examples/calculator.c** - Calculator application
+
+To build the Windows example:
+```powershell
+cd examples\windows
+.\build.bat
 ```
 
 ## Example Makefile

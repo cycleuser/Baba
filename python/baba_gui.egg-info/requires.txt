@@ -1,0 +1,7 @@
+cffi>=1.16.0
+
+[dev]
+pytest>=7.0
+pytest-cov
+black
+ruff
