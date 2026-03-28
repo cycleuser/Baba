@@ -10,7 +10,20 @@ option(BABA_BUILD_TESTS "Build tests" OFF)
 option(BABA_USE_X11 "Use X11 on Linux" ON)
 option(BABA_USE_WAYLAND "Use Wayland on Linux" ON)
 
-find_package(Vulkan REQUIRED)
+find_package(Vulkan QUIET)
+if(NOT Vulkan_FOUND)
+    if(WIN32 AND DEFINED ENV{VULKAN_SDK})
+        set(Vulkan_INCLUDE_DIRS "$ENV{VULKAN_SDK}/Include")
+        set(Vulkan_LIBRARIES "$ENV{VULKAN_SDK}/Lib/vulkan.lib")
+        if(EXISTS "${Vulkan_INCLUDE_DIRS}/vulkan/vulkan.h")
+            set(Vulkan_FOUND TRUE)
+            message(STATUS "Found Vulkan SDK from environment: $ENV{VULKAN_SDK}")
+        endif()
+    endif()
+endif()
+if(NOT Vulkan_FOUND)
+    message(FATAL_ERROR "Vulkan not found. Please install Vulkan SDK.")
+endif()
 
 set(BABA_SOURCES
     src/core/app.c

@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include "../platform/window.h"
+#include "../window.h"
 
 struct BabaPlatformWindow {
     struct wl_display* display;

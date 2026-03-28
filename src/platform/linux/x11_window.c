@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "../../platform/window.h"
+#include "../window.h"
 
 struct BabaPlatformWindow {
     Display* display;

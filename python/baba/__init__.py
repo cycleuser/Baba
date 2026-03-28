@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import platform
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __all__ = [
     "App",
     "Window",
