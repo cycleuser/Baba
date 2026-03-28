@@ -134,10 +134,10 @@ BabaPlatformWindow* baba_platform_window_create(
     wchar_t* wtitle = malloc(title_len * sizeof(wchar_t));
     MultiByteToWideChar(CP_UTF8, 0, title, -1, wtitle, title_len);
     
-    window->hwnd = CreateWindowEx(
+    window->hwnd = CreateWindowExA(
         0,
         WINDOW_CLASS_NAME,
-        wtitle,
+        title,
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         window_width, window_height,
@@ -168,11 +168,7 @@ void baba_platform_window_destroy(BabaPlatformWindow* window) {
 
 void baba_platform_window_set_title(BabaPlatformWindow* window, const char* title) {
     if (!window || !title) return;
-    int len = MultiByteToWideChar(CP_UTF8, 0, title, -1, NULL, 0);
-    wchar_t* wtitle = malloc(len * sizeof(wchar_t));
-    MultiByteToWideChar(CP_UTF8, 0, title, -1, wtitle, len);
-    SetWindowText(window->hwnd, wtitle);
-    free(wtitle);
+    SetWindowTextA(window->hwnd, title);
 }
 
 void baba_platform_window_get_size(BabaPlatformWindow* window, int* width, int* height) {
