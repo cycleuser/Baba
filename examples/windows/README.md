@@ -11,12 +11,15 @@ This example demonstrates how to use Baba GUI from C on Windows after installing
 
 2. **Install MinGW-w64** (for GCC compiler):
    ```powershell
-   scoop install mingw
+   winget install MSYS2.MSYS2
+   # Or use scoop: scoop install mingw
    ```
 
 3. **Install Vulkan SDK**:
-   - Download from: https://vulkan.lunarg.com/
-   - Or via scoop: `scoop install vulkan-sdk`
+   ```powershell
+   winget install KhronosGroup.VulkanSDK
+   ```
+   After installation, restart your terminal.
 
 ## Files
 
@@ -85,8 +88,9 @@ gcc main.c -I"$INCLUDE" -L"$LIB" -lbaba_windows -lvulkan -luser32 -lgdi32 -o app
 ## Troubleshooting
 
 ### "vulkan.h not found"
-- Install Vulkan SDK from https://vulkan.lunarg.com/
-- Make sure VULKAN_SDK environment variable is set
+- Install Vulkan SDK: `winget install KhronosGroup.VulkanSDK`
+- Restart your terminal after installation
+- Verify: `echo $env:VULKAN_SDK`
 
 ### "libbaba_windows.a not found"
 - Reinstall baba-gui: `pip install baba-gui --force-reinstall`

@@ -2,26 +2,50 @@
 
 在Windows上构建Baba GUI应用，无需安装庞大的Visual Studio (~30GB)。
 
+## 快速开始
+
+```powershell
+# 通过winget安装依赖
+winget install MSYS2.MSYS2
+winget install KhronosGroup.VulkanSDK
+winget install Kitware.CMake
+
+# 重启终端，然后在MSYS2 MINGW64终端中运行：
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-ninja
+
+# 构建
+cmake -B build -G Ninja
+cmake --build build
+```
+
 ## 工具链对比
 
 | 工具链 | 安装大小 | 编译器 | 速度 | 推荐度 |
 |--------|----------|--------|------|--------|
 | MSYS2 + MinGW | ~500MB | GCC | 快 | ⭐⭐⭐⭐⭐ |
-| Scoop + MinGW | ~200MB | GCC | 快 | ⭐⭐⭐⭐ |
-| Scoop + Zig | ~50MB | Zig cc | 快 | ⭐⭐⭐⭐⭐ |
+| Winget + MinGW | ~500MB | GCC | 快 | ⭐⭐⭐⭐⭐ |
 | Visual Studio | ~30GB | MSVC | 慢 | ⭐ |
 
-## 方案1: MSYS2 + MinGW-w64 (国内推荐)
+## 方案1: MSYS2 + MinGW-w64 (推荐)
 
 MSYS2提供类Unix环境和pacman包管理器。
 
 ### 安装步骤
 
-1. 下载MSYS2: https://www.msys2.org/
-2. 安装到 `C:\msys64` (默认路径)
-3. 从开始菜单打开 **MSYS2 MINGW64** 终端
+1. 安装MSYS2:
+   ```powershell
+   winget install MSYS2.MSYS2
+   ```
 
-### 配置清华镜像 (推荐)
+2. 从开始菜单打开 **MSYS2 MINGW64** 终端
+
+3. 安装Vulkan SDK:
+   ```powershell
+   winget install KhronosGroup.VulkanSDK
+   ```
+   安装后重启终端。
+
+### 配置清华镜像 (国内推荐)
 
 创建或编辑 `C:\msys64\etc\pacman.d\mirrorlist.mingw64`：
 
@@ -48,9 +72,10 @@ pacman -Sy
 ```bash
 pacman -Syu
 pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake \
-          mingw-w64-x86_64-ninja mingw-w64-x86_64-vulkan \
-          mingw-w64-x86_64-python mingw-w64-x86_64-python-pip
+          mingw-w64-x86_64-ninja
 ```
+
+Vulkan SDK 通过 winget 安装（见上文）。
 
 ### 构建项目
 
@@ -66,92 +91,46 @@ cmake --build build
 ./build/calculator_standalone.exe
 ```
 
-## 方案2: Scoop + MinGW
+## 方案2: Winget + MinGW (简单)
 
-Scoop是Windows的命令行包管理器，类似macOS的Homebrew。
-
-### 通过Winget安装Scoop
-
-```powershell
-winget install scoop
-```
-
-或手动安装：
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-```
-
-### 配置清华镜像 (推荐)
-
-```powershell
-# 设置Scoop本身的清华镜像
-scoop config SCOOP_REPO "https://mirrors.tuna.tsinghua.edu.cn/git/scoop-installer/scoop"
-scoop config SCOOP_BRANCH "master"
-
-# 更新Scoop
-scoop update
-
-# 添加清华extras bucket
-scoop bucket add extras https://mirrors.tuna.tsinghua.edu.cn/git/scoop-installer/scoop-extras
-
-# 添加versions bucket (用于Vulkan SDK)
-scoop bucket add versions https://mirrors.tuna.tsinghua.edu.cn/git/scoop-installer/versions
-```
+仅使用winget的简单安装方式。
 
 ### 安装依赖
 
 ```powershell
-scoop install mingw cmake ninja vulkan-sdk
+# 安装MinGW (通过MSYS2)
+winget install MSYS2.MSYS2
+
+# 安装Vulkan SDK
+winget install KhronosGroup.VulkanSDK
+
+# 安装CMake (可选，如果不使用MSYS2的cmake)
+winget install Kitware.CMake
 ```
+
+安装后重启终端。
 
 ### 构建项目
 
-```powershell
+打开 **MSYS2 MINGW64** 终端：
+
+```bash
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
+cd /c/Users/你的用户名/path/to/Baba
 cmake -B build -G Ninja
 cmake --build build
 ```
 
-### 故障排除
-
-如果CMake找不到Vulkan SDK：
-
-```powershell
-$env:VULKAN_SDK = "C:\Users\$env:USERNAME\scoop\apps\vulkan-sdk\current"
-cmake -B build -G Ninja
-cmake --build build
-```
-
-## 方案3: Scoop + Zig (最轻量 - 50MB)
-
-Zig通过`zig cc`命令提供C编译器。
-
-### 安装Scoop并配置镜像
-
-见上方方案2。
-
-### 安装依赖
-
-```powershell
-scoop install zig cmake ninja vulkan-sdk
-```
-
-### 构建项目
-
-```powershell
-cmake -B build -G Ninja -DCMAKE_C_COMPILER="zig cc"
-cmake --build build
-```
-
-## 方案4: Visual Studio (不推荐)
+## 方案3: Visual Studio (不推荐)
 
 仅当你已安装Visual Studio时使用。
 
 ### 安装依赖
 
-1. 安装Visual Studio 2022，选择"使用C++的桌面开发"工作负载
-2. 下载Vulkan SDK: https://vulkan.lunarg.com/
+```powershell
+# 先安装Visual Studio，然后：
+winget install KhronosGroup.VulkanSDK
+```
 
 ### 构建项目
 
@@ -176,19 +155,37 @@ cmake --build build --config Release
 |--------|----------|------------|
 | MinGW GCC | ~3秒 | 84KB |
 | Clang | ~2.5秒 | 82KB |
-| Zig cc | ~3秒 | 84KB |
 | MSVC | ~5秒 | 120KB |
 
 ## 常见问题
 
 ### 找不到Vulkan SDK
 
+如果CMake找不到Vulkan SDK：
+
 ```powershell
-# 设置环境变量
+# 检查Vulkan SDK安装
+echo $env:VULKAN_SDK
+
+# 如果为空，手动查找并设置
+dir C:\VulkanSDK\
 $env:VULKAN_SDK = "C:\VulkanSDK\1.3.xxx.0"
-# 或Scoop安装的
-$env:VULKAN_SDK = "C:\Users\$env:USERNAME\scoop\apps\vulkan-sdk\current"
 ```
+
+### "vulkan/vulkan.h not found"
+
+1. 安装Vulkan SDK:
+   ```powershell
+   winget install KhronosGroup.VulkanSDK
+   ```
+
+2. 重启终端
+
+3. 验证安装:
+   ```powershell
+   echo $env:VULKAN_SDK
+   dir C:\VulkanSDK\
+   ```
 
 ### 缺少DLL
 
@@ -198,6 +195,15 @@ $env:VULKAN_SDK = "C:\Users\$env:USERNAME\scoop\apps\vulkan-sdk\current"
 # 添加Vulkan到PATH (MSYS2)
 export PATH="/mingw64/bin:$PATH"
 
-# 或复制DLL (Scoop)
+# 或复制DLL
 cp $env:VULKAN_SDK\bin\vulkan-1.dll .
+```
+
+### 找不到GCC
+
+确保打开的是 **MSYS2 MINGW64** 终端（不是MSYS2 MSYS终端）。
+
+或将MinGW添加到PATH：
+```powershell
+$env:PATH = "C:\msys64\mingw64\bin;" + $env:PATH
 ```

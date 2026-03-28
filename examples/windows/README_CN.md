@@ -11,12 +11,15 @@
 
 2. **安装 MinGW-w64** (GCC编译器):
    ```powershell
-   scoop install mingw
+   winget install MSYS2.MSYS2
+   # 或使用 scoop: scoop install mingw
    ```
 
 3. **安装 Vulkan SDK**:
-   - 下载地址: https://vulkan.lunarg.com/
-   - 或通过scoop: `scoop install vulkan-sdk`
+   ```powershell
+   winget install KhronosGroup.VulkanSDK
+   ```
+   安装后重启终端。
 
 ## 文件说明
 
@@ -85,8 +88,9 @@ gcc main.c -I"$INCLUDE" -L"$LIB" -lbaba_windows -lvulkan -luser32 -lgdi32 -o app
 ## 故障排除
 
 ### "vulkan.h not found"
-- 从 https://vulkan.lunarg.com/ 安装Vulkan SDK
-- 确保设置了VULKAN_SDK环境变量
+- 安装 Vulkan SDK: `winget install KhronosGroup.VulkanSDK`
+- 安装后重启终端
+- 验证安装: `echo $env:VULKAN_SDK`
 
 ### "libbaba_windows.a not found"
 - 重新安装: `pip install baba-gui --force-reinstall`

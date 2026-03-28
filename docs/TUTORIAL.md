@@ -130,8 +130,7 @@ sudo pacman -S vulkan-headers vulkan-tools
 #### Windows
 
 ```powershell
-scoop install vulkan-sdk
-# Or download from https://vulkan.lunarg.com/
+winget install KhronosGroup.VulkanSDK
 ```
 
 ### Build from Source

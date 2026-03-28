@@ -66,20 +66,24 @@ gcc main.c -I"$INCLUDE_DIR" -L"$(dirname $LIB_PATH)" -lbaba \
 ### Windows (MinGW)
 
 ```powershell
+# Install dependencies
+winget install MSYS2.MSYS2
+winget install KhronosGroup.VulkanSDK
+
+# Restart terminal, then in MSYS2 MINGW64:
+pacman -S mingw-w64-x86_64-gcc
+
 # Get paths
 $INCLUDE_DIR = python -c "import baba; print(baba.get_include_dir())"
 $LIB_DIR = python -c "import baba; import os; print(os.path.dirname(baba.get_lib_path()))"
 
 # Compile
-gcc main.c -I"$INCLUDE_DIR" -L"$LIB_DIR" -lbaba_windows `
-    -lvulkan -luser32 -lgdi32 -o myapp.exe
+gcc main.c -I"$INCLUDE_DIR" -I"C:\VulkanSDK\1.3.xxx.0\Include" `
+    -L"$LIB_DIR" -L"C:\VulkanSDK\1.3.xxx.0\Lib" `
+    -lbaba_windows -lvulkan-1 -luser32 -lgdi32 -o myapp.exe
 ```
 
-**Note**: The library name is `baba_windows` on Windows. If using the `.lib` file:
-```powershell
-gcc main.c -I"$INCLUDE_DIR" -L"$LIB_DIR" baba_windows.lib `
-    -lvulkan -luser32 -lgdi32 -o myapp.exe
-```
+**Note**: The library name is `baba_windows` on Windows. Replace `1.3.xxx.0` with your Vulkan SDK version.
 
 ## Example Projects
 
