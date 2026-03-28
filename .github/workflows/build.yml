@@ -1,12 +1,14 @@
-name: Build
+name: Build and Publish
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   build-macos:
@@ -18,18 +20,30 @@ jobs:
         run: |
           brew install vulkan-loader vulkan-headers molten-vk cmake ninja
       
-      - name: Build
-        run: ./build_all.sh
+      - name: Build library
+        run: |
+          mkdir -p python/baba/lib python/baba/include
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF
+          cmake --build build
+          cp build/libbaba.a python/baba/lib/libbaba_macos.a
+          cp src/*.h python/baba/include/
+          for dir in core widgets layout render platform theme; do
+            mkdir -p python/baba/include/$dir
+            cp src/$dir/*.h python/baba/include/$dir/ 2>/dev/null || true
+          done
       
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Verify build
+        run: |
+          echo "=== macOS build ==="
+          ls -la python/baba/lib/
+          ls -la python/baba/include/
+      
+      - uses: actions/upload-artifact@v4
         with:
           name: lib-macos
-          path: |
-            dist/lib/macos/*.a
-            dist/include/
-            python/baba/lib/*.a
-            python/baba/include/
+          path: python/baba/
 
   build-linux:
     runs-on: ubuntu-latest
@@ -43,18 +57,29 @@ jobs:
             libvulkan-dev libx11-dev libxrandr-dev libxinerama-dev \
             libxcursor-dev libxi-dev libwayland-dev wayland-protocols
       
-      - name: Build
-        run: ./build_all.sh
+      - name: Build library
+        run: |
+          mkdir -p python/baba/lib python/baba/include
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF
+          cmake --build build
+          cp build/libbaba.a python/baba/lib/libbaba_linux.a
+          cp src/*.h python/baba/include/
+          for dir in core widgets layout render platform theme; do
+            mkdir -p python/baba/include/$dir
+            cp src/$dir/*.h python/baba/include/$dir/ 2>/dev/null || true
+          done
       
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Verify build
+        run: |
+          echo "=== Linux build ==="
+          ls -la python/baba/lib/
+          ls -la python/baba/include/
+      
+      - uses: actions/upload-artifact@v4
         with:
           name: lib-linux
-          path: |
-            dist/lib/linux-x64/*.a
-            dist/include/
-            python/baba/lib/*.a
-            python/baba/include/
+          path: python/baba/
 
   build-windows:
     runs-on: windows-latest
@@ -68,28 +93,36 @@ jobs:
           update: true
           install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-vulkan
       
-      - name: Build
+      - name: Build library
         shell: msys2 {0}
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF
+          mkdir -p python/baba/lib python/baba/include
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF
           cmake --build build
-          mkdir -p dist/lib/windows-x64
-          mkdir -p python/baba/lib
-          cp build/libbaba.a dist/lib/windows-x64/
           cp build/libbaba.a python/baba/lib/libbaba_windows.a
+          cp src/*.h python/baba/include/
+          for dir in core widgets layout render platform theme; do
+            mkdir -p python/baba/include/$dir
+            cp src/$dir/*.h python/baba/include/$dir/ 2>/dev/null || true
+          done
       
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Verify build
+        shell: msys2 {0}
+        run: |
+          echo "=== Windows build ==="
+          ls -la python/baba/lib/
+          ls -la python/baba/include/
+      
+      - uses: actions/upload-artifact@v4
         with:
           name: lib-windows
-          path: |
-            dist/lib/windows-x64/*.a
-            python/baba/lib/*.a
+          path: python/baba/
 
   publish:
     needs: [build-macos, build-linux, build-windows]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
     steps:
       - uses: actions/checkout@v4
       
@@ -97,26 +130,104 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: lib-*
+          merge-multiple: false
       
-      - name: Prepare package
+      - name: Merge libraries into package
         run: |
+          set -x
           mkdir -p python/baba/lib python/baba/include
-          cp artifacts/lib-macos/python/baba/lib/*.a python/baba/lib/ || true
-          cp artifacts/lib-linux/python/baba/lib/*.a python/baba/lib/ || true
-          cp artifacts/lib-windows/python/baba/lib/*.a python/baba/lib/ || true
-          cp -r artifacts/lib-macos/python/baba/include/* python/baba/include/ || true
+          
+          echo "=== Downloaded artifacts ==="
+          ls -la artifacts/
+          
+          echo "=== macOS files ==="
+          ls -la artifacts/lib-macos/lib/ 2>/dev/null || echo "No macOS lib"
+          
+          echo "=== Linux files ==="
+          ls -la artifacts/lib-linux/lib/ 2>/dev/null || echo "No Linux lib"
+          
+          echo "=== Windows files ==="
+          ls -la artifacts/lib-windows/lib/ 2>/dev/null || echo "No Windows lib"
+          
+          # Copy all library files
+          cp artifacts/lib-macos/lib/*.a python/baba/lib/ 2>/dev/null || true
+          cp artifacts/lib-linux/lib/*.a python/baba/lib/ 2>/dev/null || true
+          cp artifacts/lib-windows/lib/*.a python/baba/lib/ 2>/dev/null || true
+          
+          # Copy headers (from any platform, they're the same)
+          cp -r artifacts/lib-macos/include/* python/baba/include/ 2>/dev/null || true
+          
+          echo "=== Final package contents ==="
+          echo "Libraries:"
+          ls -la python/baba/lib/
+          echo "Headers:"
+          ls -la python/baba/include/
+          
+          # Verify we have all platforms
+          MISSING=""
+          [ -f python/baba/lib/libbaba_macos.a ] || MISSING="$MISSING macos"
+          [ -f python/baba/lib/libbaba_linux.a ] || MISSING="$MISSING linux"
+          [ -f python/baba/lib/libbaba_windows.a ] || MISSING="$MISSING windows"
+          
+          if [ -n "$MISSING" ]; then
+            echo "WARNING: Missing libraries for:$MISSING"
+          fi
       
-      - name: Build package
+      - name: Build Python package
         run: |
           pip install build twine
           python -m build
+      
+      - name: Check package contents
+        run: |
+          echo "=== Wheel contents ==="
+          unzip -l dist/*.whl | grep -E "(lib|include)" || echo "No lib/include in wheel"
       
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: twine upload dist/*
+
+  # Test build without publishing
+  test-wheel:
+    needs: [build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: lib-*
+          merge-multiple: false
+      
+      - name: Merge and build
+        run: |
+          mkdir -p python/baba/lib python/baba/include
+          cp artifacts/lib-macos/lib/*.a python/baba/lib/ 2>/dev/null || true
+          cp artifacts/lib-linux/lib/*.a python/baba/lib/ 2>/dev/null || true
+          cp artifacts/lib-windows/lib/*.a python/baba/lib/ 2>/dev/null || true
+          cp -r artifacts/lib-macos/include/* python/baba/include/ 2>/dev/null || true
+          
+          echo "=== Package contents ==="
+          ls -la python/baba/lib/
+          
+          pip install build
+          python -m build --wheel
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel
+          path: dist/*.whl
