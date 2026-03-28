@@ -1,153 +1,241 @@
 #import <Cocoa/Cocoa.h>
-#include "../../platform/window.h"
+#include "../platform.h"
 
-@interface BabaNSWindowDelegate : NSObject<NSWindowDelegate>
-@property (nonatomic, assign) BabaWindowCallbacks* callbacks;
-@property (nonatomic, assign) void* userdata;
+struct BabaPlatformWindow {
+    NSWindow* ns_window;
+    NSView* ns_view;
+    BabaPlatformCallbacks callbacks;
+    bool should_close;
+    int width;
+    int height;
+};
+
+@interface BabaWindowDelegate : NSObject <NSWindowDelegate>
+@property (assign) BabaPlatformWindow* window;
 @end
 
-@implementation BabaNSWindowDelegate
-
+@implementation BabaWindowDelegate
 - (void)windowDidResize:(NSNotification*)notification {
-    NSWindow* window = notification.object;
-    NSSize size = window.contentView.bounds.size;
-    if (self.callbacks && self.callbacks->on_resize) {
-        self.callbacks->on_resize(self.userdata, (int)size.width, (int)size.height);
+    if (self.window && self.window->callbacks.on_resize) {
+        NSRect frame = [self.window->ns_view frame];
+        self.window->width = (int)frame.size.width;
+        self.window->height = (int)frame.size.height;
+        self.window->callbacks.on_resize(
+            self.window->callbacks.userdata,
+            self.window->width,
+            self.window->height
+        );
     }
 }
 
 - (BOOL)windowShouldClose:(id)sender {
-    if (self.callbacks && self.callbacks->on_close) {
-        self.callbacks->on_close(self.userdata);
+    if (self.window) {
+        self.window->should_close = true;
+        if (self.window->callbacks.on_close) {
+            return self.window->callbacks.on_close(self.window->callbacks.userdata) ? YES : NO;
+        }
     }
-    return NO;
+    return YES;
 }
-
 @end
 
-struct BabaPlatformWindow {
-    NSWindow* window;
-    NSView* view;
-    BabaNSWindowDelegate* delegate;
-    BabaWindowCallbacks callbacks;
-    bool should_close;
-};
+@interface BabaView : NSView {
+    BabaPlatformWindow* _babaWindow;
+}
+- (void)setBabaWindow:(BabaPlatformWindow*)window;
+- (BabaPlatformWindow*)babaWindow;
+@end
 
-static NSApplication* g_app = nil;
-static int g_window_count = 0;
+@implementation BabaView
+- (void)setBabaWindow:(BabaPlatformWindow*)window {
+    _babaWindow = window;
+}
+- (BabaPlatformWindow*)babaWindow {
+    return _babaWindow;
+}
+- (void)mouseMoved:(NSEvent*)event {
+    if (_babaWindow && _babaWindow->callbacks.on_mouse) {
+        NSPoint point = [event locationInWindow];
+        _babaWindow->callbacks.on_mouse(
+            _babaWindow->callbacks.userdata,
+            point.x,
+            _babaWindow->height - point.y,
+            0, false
+        );
+    }
+}
+
+- (void)mouseDown:(NSEvent*)event {
+    if (_babaWindow && _babaWindow->callbacks.on_mouse) {
+        NSPoint point = [event locationInWindow];
+        _babaWindow->callbacks.on_mouse(
+            _babaWindow->callbacks.userdata,
+            point.x,
+            _babaWindow->height - point.y,
+            0, true
+        );
+    }
+}
+
+- (void)mouseUp:(NSEvent*)event {
+    if (_babaWindow && _babaWindow->callbacks.on_mouse) {
+        NSPoint point = [event locationInWindow];
+        _babaWindow->callbacks.on_mouse(
+            _babaWindow->callbacks.userdata,
+            point.x,
+            _babaWindow->height - point.y,
+            0, false
+        );
+    }
+}
+
+- (void)keyDown:(NSEvent*)event {
+    if (_babaWindow && _babaWindow->callbacks.on_key) {
+        _babaWindow->callbacks.on_key(
+            _babaWindow->callbacks.userdata,
+            (int)[event keyCode],
+            true
+        );
+    }
+}
+
+- (void)keyUp:(NSEvent*)event {
+    if (_babaWindow && _babaWindow->callbacks.on_key) {
+        _babaWindow->callbacks.on_key(
+            _babaWindow->callbacks.userdata,
+            (int)[event keyCode],
+            false
+        );
+    }
+}
+@end
+
+static NSApplication* g_app = NULL;
 
 BabaPlatformWindow* baba_platform_window_create(
     const char* title,
     int width,
     int height,
-    BabaWindowCallbacks* callbacks
+    BabaPlatformCallbacks* callbacks
 ) {
-    if (!g_app) {
-        [NSApplication sharedApplication];
-        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-        [NSApp finishLaunching];
-        g_app = NSApp;
+    @autoreleasepool {
+        if (!g_app) {
+            [NSApplication sharedApplication];
+            [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+            [NSApp finishLaunching];
+            g_app = NSApp;
+        }
+        
+        BabaPlatformWindow* window = calloc(1, sizeof(BabaPlatformWindow));
+        if (!window) return NULL;
+        
+        if (callbacks) {
+            window->callbacks = *callbacks;
+        }
+        window->width = width;
+        window->height = height;
+        
+        NSRect frame = NSMakeRect(0, 0, width, height);
+        
+        NSUInteger styleMask = NSWindowStyleMaskTitled | 
+                               NSWindowStyleMaskClosable | 
+                               NSWindowStyleMaskMiniaturizable | 
+                               NSWindowStyleMaskResizable;
+        
+        window->ns_window = [[NSWindow alloc] initWithContentRect:frame
+                                                       styleMask:styleMask
+                                                         backing:NSBackingStoreBuffered
+                                                           defer:NO];
+        
+        if (!window->ns_window) {
+            free(window);
+            return NULL;
+        }
+        
+        BabaView* view = [[BabaView alloc] initWithFrame:frame];
+        [view setBabaWindow:window];
+        window->ns_view = view;
+        [window->ns_window setContentView:view];
+        
+        BabaWindowDelegate* delegate = [[BabaWindowDelegate alloc] init];
+        delegate.window = window;
+        [window->ns_window setDelegate:delegate];
+        
+        [window->ns_window setTitle:[NSString stringWithUTF8String:title ? title : "Baba"]];
+        [window->ns_window center];
+        [window->ns_window setAcceptsMouseMovedEvents:YES];
+        
+        return window;
     }
-    
-    BabaPlatformWindow* window = malloc(sizeof(BabaPlatformWindow));
-    if (!window) return NULL;
-    
-    if (callbacks) {
-        window->callbacks = *callbacks;
-    }
-    
-    NSRect frame = NSMakeRect(0, 0, width, height);
-    NSUInteger style_mask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | 
-                           NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
-    
-    window->window = [[NSWindow alloc] initWithContentRect:frame
-                                                styleMask:style_mask
-                                                  backing:NSBackingStoreBuffered
-                                                    defer:NO];
-    
-    if (!window->window) {
-        free(window);
-        return NULL;
-    }
-    
-    window->window.title = [NSString stringWithUTF8String:title];
-    [window->window center];
-    
-    window->view = window->window.contentView;
-    window->view.wantsLayer = YES;
-    
-    window->delegate = [[BabaNSWindowDelegate alloc] init];
-    window->delegate.callbacks = &window->callbacks;
-    window->delegate.userdata = callbacks ? callbacks->userdata : NULL;
-    window->window.delegate = window->delegate;
-    
-    window->should_close = false;
-    g_window_count++;
-    
-    return window;
 }
 
 void baba_platform_window_destroy(BabaPlatformWindow* window) {
     if (!window) return;
-    
-    window->window.delegate = nil;
-    [window->window close];
-    window->window = nil;
-    window->view = nil;
-    window->delegate = nil;
-    
-    g_window_count--;
-    
-    if (g_window_count == 0 && g_app) {
-        [g_app terminate:nil];
-        g_app = nil;
+    @autoreleasepool {
+        if (window->ns_window) {
+            [window->ns_window close];
+        }
     }
-    
     free(window);
 }
 
 void baba_platform_window_set_title(BabaPlatformWindow* window, const char* title) {
-    if (!window || !title) return;
-    window->window.title = [NSString stringWithUTF8String:title];
+    if (!window || !window->ns_window || !title) return;
+    @autoreleasepool {
+        [window->ns_window setTitle:[NSString stringWithUTF8String:title]];
+    }
 }
 
 void baba_platform_window_get_size(BabaPlatformWindow* window, int* width, int* height) {
     if (!window) return;
-    NSSize size = window->view.bounds.size;
-    if (width) *width = (int)size.width;
-    if (height) *height = (int)size.height;
-}
-
-void baba_platform_window_get_position(BabaPlatformWindow* window, int* x, int* y) {
-    if (!window) return;
-    NSRect frame = window->window.frame;
-    if (x) *x = (int)frame.origin.x;
-    if (y) *y = (int)frame.origin.y;
+    if (width) *width = window->width;
+    if (height) *height = window->height;
 }
 
 void baba_platform_window_set_size(BabaPlatformWindow* window, int width, int height) {
-    if (!window) return;
-    NSSize size = NSMakeSize(width, height);
-    [window->window setContentSize:size];
+    if (!window || !window->ns_window) return;
+    @autoreleasepool {
+        NSRect frame = [window->ns_window frame];
+        frame.size.width = width;
+        frame.size.height = height;
+        [window->ns_window setFrame:frame display:YES];
+        window->width = width;
+        window->height = height;
+    }
+}
+
+void baba_platform_window_get_position(BabaPlatformWindow* window, int* x, int* y) {
+    if (!window || !window->ns_window) return;
+    @autoreleasepool {
+        NSRect frame = [window->ns_window frame];
+        if (x) *x = (int)frame.origin.x;
+        if (y) *y = (int)frame.origin.y;
+    }
 }
 
 void baba_platform_window_set_position(BabaPlatformWindow* window, int x, int y) {
-    if (!window) return;
-    NSScreen* screen = [NSScreen mainScreen];
-    NSRect screen_frame = screen.frame;
-    NSPoint point = NSMakePoint(x, screen_frame.size.height - y);
-    [window->window setFrameOrigin:point];
+    if (!window || !window->ns_window) return;
+    @autoreleasepool {
+        NSRect frame = [window->ns_window frame];
+        frame.origin.x = x;
+        frame.origin.y = y;
+        [window->ns_window setFrame:frame display:YES];
+    }
 }
 
 void baba_platform_window_show(BabaPlatformWindow* window) {
-    if (!window) return;
-    [window->window makeKeyAndOrderFront:nil];
-    [NSApp activateIgnoringOtherApps:YES];
+    if (!window || !window->ns_window) return;
+    @autoreleasepool {
+        [window->ns_window makeKeyAndOrderFront:nil];
+        [NSApp activateIgnoringOtherApps:YES];
+    }
 }
 
 void baba_platform_window_hide(BabaPlatformWindow* window) {
-    if (!window) return;
-    [window->window orderOut:nil];
+    if (!window || !window->ns_window) return;
+    @autoreleasepool {
+        [window->ns_window orderOut:nil];
+    }
 }
 
 void baba_platform_window_close(BabaPlatformWindow* window) {
@@ -155,31 +243,182 @@ void baba_platform_window_close(BabaPlatformWindow* window) {
     window->should_close = true;
 }
 
-bool baba_platform_window_should_close(BabaPlatformWindow* window) {
-    return window ? window->should_close : true;
+void* baba_platform_window_get_native(BabaPlatformWindow* window) {
+    return window ? (__bridge void*)window->ns_window : NULL;
 }
 
-const char** baba_platform_get_required_vulkan_extensions(uint32_t* count) {
-    static const char* extensions[] = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-        "VK_EXT_metal_surface"
-    };
-    if (count) *count = 2;
-    return extensions;
+void baba_platform_window_invalidate(BabaPlatformWindow* window) {
+    if (!window || !window->ns_view) return;
+    @autoreleasepool {
+        [window->ns_view setNeedsDisplay:YES];
+    }
 }
 
 double baba_platform_get_time(void) {
-    return [NSDate timeIntervalSinceReferenceDate];
+    static double start_time = 0;
+    static bool initialized = false;
+    
+    if (!initialized) {
+        start_time = CFAbsoluteTimeGetCurrent();
+        initialized = true;
+    }
+    
+    return CFAbsoluteTimeGetCurrent() - start_time;
 }
 
 void baba_platform_poll_events(void) {
     @autoreleasepool {
         NSEvent* event;
         while ((event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                           untilDate:[NSDate distantPast]
+                                           untilDate:nil
                                               inMode:NSDefaultRunLoopMode
                                              dequeue:YES])) {
             [NSApp sendEvent:event];
         }
+    }
+}
+
+bool baba_platform_window_should_close(BabaPlatformWindow* window) {
+    return window ? window->should_close : true;
+}
+
+struct BabaPlatformButton {
+    NSButton* ns_button;
+    BabaButtonCallback callback;
+    void* userdata;
+};
+
+@interface BabaButtonTarget : NSObject
+@property (assign) BabaPlatformButton* button;
+@end
+
+@implementation BabaButtonTarget
+- (void)onClick:(id)sender {
+    if (self.button && self.button->callback) {
+        self.button->callback(self.button->userdata);
+    }
+}
+@end
+
+BabaPlatformButton* baba_platform_button_create(
+    BabaPlatformWindow* window,
+    const char* text,
+    float x, float y, float width, float height,
+    BabaButtonCallback callback,
+    void* userdata
+) {
+    if (!window || !window->ns_view) return NULL;
+    
+    @autoreleasepool {
+        BabaPlatformButton* button = calloc(1, sizeof(BabaPlatformButton));
+        if (!button) return NULL;
+        
+        button->callback = callback;
+        button->userdata = userdata;
+        
+        NSRect frame = NSMakeRect(x, window->height - y - height, width, height);
+        
+        BabaButtonTarget* target = [[BabaButtonTarget alloc] init];
+        target.button = button;
+        
+        button->ns_button = [[NSButton alloc] initWithFrame:frame];
+        [button->ns_button setTitle:[NSString stringWithUTF8String:text ? text : ""]];
+        [button->ns_button setBezelStyle:NSBezelStyleRounded];
+        [button->ns_button setTarget:target];
+        [button->ns_button setAction:@selector(onClick:)];
+        
+        [window->ns_view addSubview:button->ns_button];
+        
+        return button;
+    }
+}
+
+void baba_platform_button_destroy(BabaPlatformButton* button) {
+    if (!button) return;
+    @autoreleasepool {
+        if (button->ns_button) {
+            [button->ns_button removeFromSuperview];
+        }
+    }
+    free(button);
+}
+
+void baba_platform_button_set_text(BabaPlatformButton* button, const char* text) {
+    if (!button || !button->ns_button) return;
+    @autoreleasepool {
+        [button->ns_button setTitle:[NSString stringWithUTF8String:text ? text : ""]];
+    }
+}
+
+struct BabaPlatformTextField {
+    NSTextField* ns_field;
+    char* text_buffer;
+    int buffer_size;
+};
+
+BabaPlatformTextField* baba_platform_textfield_create(
+    BabaPlatformWindow* window,
+    const char* text,
+    float x, float y, float width, float height
+) {
+    if (!window || !window->ns_view) return NULL;
+    
+    @autoreleasepool {
+        BabaPlatformTextField* field = calloc(1, sizeof(BabaPlatformTextField));
+        if (!field) return NULL;
+        
+        field->buffer_size = 256;
+        field->text_buffer = calloc(field->buffer_size, sizeof(char));
+        
+        NSRect frame = NSMakeRect(x, window->height - y - height, width, height);
+        
+        field->ns_field = [[NSTextField alloc] initWithFrame:frame];
+        [field->ns_field setStringValue:[NSString stringWithUTF8String:text ? text : ""]];
+        [field->ns_field setBezeled:YES];
+        [field->ns_field setEditable:NO];
+        [field->ns_field setAlignment:NSTextAlignmentRight];
+        [field->ns_field setFont:[NSFont systemFontOfSize:24.0]];
+        
+        [window->ns_view addSubview:field->ns_field];
+        
+        if (text) {
+            strncpy(field->text_buffer, text, field->buffer_size - 1);
+        }
+        
+        return field;
+    }
+}
+
+void baba_platform_textfield_destroy(BabaPlatformTextField* field) {
+    if (!field) return;
+    @autoreleasepool {
+        if (field->ns_field) {
+            [field->ns_field removeFromSuperview];
+        }
+        if (field->text_buffer) {
+            free(field->text_buffer);
+        }
+    }
+    free(field);
+}
+
+void baba_platform_textfield_set_text(BabaPlatformTextField* field, const char* text) {
+    if (!field || !field->ns_field) return;
+    @autoreleasepool {
+        [field->ns_field setStringValue:[NSString stringWithUTF8String:text ? text : ""]];
+        if (text && field->text_buffer) {
+            strncpy(field->text_buffer, text, field->buffer_size - 1);
+        }
+    }
+}
+
+const char* baba_platform_textfield_get_text(BabaPlatformTextField* field) {
+    if (!field) return NULL;
+    @autoreleasepool {
+        NSString* str = [field->ns_field stringValue];
+        if (str && field->text_buffer) {
+            strncpy(field->text_buffer, [str UTF8String], field->buffer_size - 1);
+        }
+        return field->text_buffer;
     }
 }

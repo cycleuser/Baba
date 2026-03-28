@@ -1,435 +1,130 @@
 # Baba
 
-A lightweight, cross-platform C GUI framework using Vulkan for rendering.
+一个简单的单头文件跨平台 GUI 库，类似于 stb 系列。
 
-## Features
+## 特点
 
-- **Minimal Dependencies**: Only requires Vulkan SDK
-- **Cross-Platform**: macOS, Linux (X11/Wayland), Windows
-- **Native Window**: Uses platform-native APIs
-- **Vulkan Rendering**: Modern GPU-accelerated rendering
-- **Complete Widgets**: Buttons, Labels, TextBoxes, etc.
-- **Flexible Layout**: Flexbox-like and Grid layouts
-- **Python Bindings**: `pip install baba-gui`
+- **单头文件**: 只需 `#include "baba.h"` 
+- **无外部依赖**: 使用平台原生 API
+- **跨平台**: macOS (Cocoa), Windows (Win32), Linux (X11)
+- **简单编译**: 一行命令即可编译
 
-## Documentation
-
-- [Windows Build Guide](docs/WINDOWS_BUILD.md) - MSYS2/Scoop/Zig lightweight options
-- [Linux Build Guide](docs/LINUX_BUILD.md) - Ubuntu/Arch/Fedora instructions
-- [macOS Build Guide](docs/MACOS_BUILD.md) - Homebrew/Vulkan SDK installation
-- [Architecture](docs/ARCHITECTURE.md) - Project architecture and design
-- [Tutorial](docs/TUTORIAL.md) - Quick start guide
-- [C Development Guide](docs/C_DEVELOPMENT.md) - Using Baba for C GUI development
-
-[中文文档](README_CN.md)
-
-## Installation
-
-### Python (Recommended)
-
-```bash
-pip install baba-gui
-```
-
-### From Source
-
-**Prerequisites:**
-- CMake 3.20+
-- C11 compiler
-- Vulkan SDK
-
-**Build Steps:**
-```bash
-mkdir build && cd build
-cmake ..
-make
-```
-
-**Platform-Specific:**
-
-**macOS:**
-```bash
-brew install vulkan-loader vulkan-headers molten-vk
-cmake -DCMAKE_PREFIX_PATH=$(brew --prefix) ..
-make
-```
-
-**Linux:**
-```bash
-# Ubuntu/Debian
-sudo apt install libvulkan-dev xorg-dev wayland-protocols
-
-# Arch
-sudo pacman -S vulkan-headers vulkan-tools libx11 libwayland
-
-cmake ..
-make
-```
-
-**Windows:**
-
-Recommended: MinGW-w64 via MSYS2:
-
-```powershell
-# Install dependencies via winget
-winget install MSYS2.MSYS2
-winget install KhronosGroup.VulkanSDK
-
-# Open MSYS2 MINGW64 terminal:
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
-
-# Build
-cmake -B build -G Ninja
-cmake --build build
-```
-
-If you must use Visual Studio:
-```powershell
-cmake -B build -G "Visual Studio 17 2022"
-cmake --build build --config Release
-```
-
-## Quick Start
-
-### Python
-
-```python
-import baba
-
-def on_click(button):
-    print("Button clicked!")
-
-with baba.create_app() as app:
-    window = app.create_window("Baba Demo", 800, 600)
-    
-    button = baba.Button("Click Me")
-    button.on_click(on_click)
-    window.root.add_child(button)
-    
-    label = baba.Label("Hello, Baba GUI!")
-    label.font_size = 24.0
-    label.color = baba.Color.from_hex("#333333")
-    window.root.add_child(label)
-    
-    window.show()
-    app.run()
-```
-
-### C
+## 使用方法
 
 ```c
-#include <baba.h>
-#include <widgets/button.h>
-#include <widgets/label.h>
+#define BABA_IMPLEMENTATION
+#include "baba.h"
 
-void on_click(BabaWidget* button, void* data) {
-    printf("Button clicked!\n");
-}
-
-int main() {
+int main(void) {
     BabaApp* app = baba_app_create();
-    BabaWindow* win = baba_window_create(app, "Baba Demo", 800, 600);
+    BabaWindow* win = baba_window_create(app, "Hello", 400, 300);
     
-    BabaWidget* root = baba_window_get_root(win);
-    BabaWidget* button = baba_button_create("Click Me");
-    baba_button_set_on_click(button, on_click, NULL);
-    baba_widget_add_child(root, button);
+    BabaButton* btn = baba_button_create(win, "Click Me", 50, 50, 100, 30);
+    baba_button_set_callback(btn, my_callback, NULL);
     
     baba_window_show(win);
     baba_app_run(app);
-    
-    baba_window_destroy(win);
-    baba_app_destroy(app);
     return 0;
 }
 ```
 
-## Architecture
+## 编译
 
-```
-Baba/
-├── src/
-│   ├── baba.h              # Main public API
-│   ├── core/               # Core utilities
-│   ├── platform/           # Platform abstraction (macOS/Linux/Windows)
-│   ├── render/             # Vulkan renderer + Painter API
-│   ├── widgets/            # UI widgets (Button, Label, TextBox)
-│   ├── layout/             # Flex/Grid layouts
-│   └── theme/              # Theming system
-├── python/                 # Python bindings (cffi)
-├── examples/               # Example applications
-└── docs/                   # Documentation
+### macOS
+```sh
+clang -x objective-c -framework Cocoa your_file.c -o your_app
 ```
 
-## API Overview
+### Windows (MinGW)
+```sh
+gcc your_file.c -luser32 -lgdi32 -lcomdlg32 -lshell32 -o your_app.exe
+```
 
-### Application
+### Linux
+```sh
+gcc your_file.c -lX11 -o your_app
+```
 
+## API
+
+### 应用 & 窗口
 ```c
-// C
-BabaApp* app = baba_app_create();
-int result = baba_app_run(app);
+BabaApp* baba_app_create(void);
+void baba_app_destroy(BabaApp* app);
+int baba_app_run(BabaApp* app);
 void baba_app_quit(BabaApp* app);
+
+BabaWindow* baba_window_create(BabaApp* app, const char* title, int width, int height);
+void baba_window_destroy(BabaWindow* window);
+void baba_window_set_title(BabaWindow* window, const char* title);
+void baba_window_show(BabaWindow* window);
+void baba_window_close(BabaWindow* window);
+void baba_window_get_size(BabaWindow* window, int* w, int* h);
 ```
 
-```python
-# Python
-app = baba.App()
-result = app.run()
-app.quit()
-```
-
-### Window
-
+### 控件
 ```c
-BabaWindow* win = baba_window_create(app, "Title", 800, 600);
-baba_window_set_title(win, "New Title");
-baba_window_show(win);
+// 按钮
+BabaButton* baba_button_create(BabaWindow* window, const char* text, float x, float y, float w, float h);
+void baba_button_set_text(BabaButton* button, const char* text);
+void baba_button_set_callback(BabaButton* button, BabaButtonCallback callback, void* userdata);
+
+// 标签
+BabaLabel* baba_label_create(BabaWindow* window, const char* text, float x, float y, float w, float h);
+void baba_label_set_text(BabaLabel* label, const char* text);
+
+// 文本框
+BabaTextField* baba_textfield_create(BabaWindow* window, const char* text, float x, float y, float w, float h, bool editable);
+void baba_textfield_set_text(BabaTextField* field, const char* text);
+const char* baba_textfield_get_text(BabaTextField* field);
+
+// 表格
+BabaTableView* baba_table_create(BabaWindow* window, float x, float y, float w, float h);
+void baba_table_set_headers(BabaTableView* table, const char** headers, int count);
+void baba_table_add_row(BabaTableView* table, const char** values, int count);
+void baba_table_clear(BabaTableView* table);
+int baba_table_get_row_count(BabaTableView* table);
+void baba_table_get_cell(BabaTableView* table, int row, int col, char* buffer, int bufsize);
+
+// 图片
+BabaImageView* baba_image_create(BabaWindow* window, float x, float y, float w, float h);
+bool baba_image_load_file(BabaImageView* image, const char* path);
+bool baba_image_save_file(BabaImageView* image, const char* path);
+void baba_image_get_size(BabaImageView* image, int* w, int* h);
 ```
 
-```python
-window = app.create_window("Title", 800, 600)
-window.title = "New Title"
-window.show()
-```
-
-### Widgets
-
+### 文件对话框
 ```c
-// Button
-BabaWidget* btn = baba_button_create("Button");
-baba_button_set_on_click(btn, callback, NULL);
-
-// Label
-BabaWidget* label = baba_label_create("Text");
-baba_label_set_font_size(label, 16.0f);
-
-// TextBox
-BabaWidget* input = baba_textbox_create("Placeholder");
-const char* text = baba_textbox_get_text(input);
+char* baba_file_open_dialog(BabaWindow* window, const char* title, const char* filter);
+char* baba_file_save_dialog(BabaWindow* window, const char* title, const char* filter);
+char* baba_file_open_folder_dialog(BabaWindow* window, const char* title);
 ```
 
-```python
-# Button
-btn = baba.Button("Button")
-btn.on_click(lambda b: print("clicked"))
+## 示例
 
-# Label
-label = baba.Label("Text")
-label.font_size = 16.0
+| 文件 | 功能 |
+|------|------|
+| `calculator.c` | 计算器，支持四则运算 |
+| `csv_viewer.c` | CSV 文件查看器/编辑器 |
+| `image_viewer.c` | 图片查看器，支持加载/保存 |
+| `text_editor.c` | 简易文本编辑器 |
+| `demo.c` | 最小示例 |
 
-# TextBox
-input = baba.TextBox("Placeholder")
-text = input.text
+编译运行：
+```sh
+cd examples
+clang -x objective-c -framework Cocoa calculator.c -o calculator
+./calculator
 ```
 
-### Layout
+## 平台支持
 
-```c
-// Flex layout
-BabaWidget* flex = baba_flex_layout_create(BABA_LAYOUT_DIRECTION_ROW);
-baba_flex_layout_set_gap(flex, 10.0f);
-
-// Grid layout
-BabaWidget* grid = baba_grid_layout_create(3, 2);
-```
-
-## Publishing to PyPI
-
-### Build Wheels
-
-```bash
-# Install build tools
-pip install build cibuildwheel
-
-# Build source distribution
-python -m build --sdist
-
-# Build wheels for all platforms
-cibuildwheel --platform macos
-cibuildwheel --platform linux
-cibuildwheel --platform windows
-```
-
-### Upload to PyPI
-
-```bash
-pip install twine
-twine upload dist/*
-```
-
-### GitHub Actions (CI/CD)
-
-The project includes `cibuildwheel` configuration in `pyproject.toml` for automated wheel building:
-
-```yaml
-# .github/workflows/publish.yml
-name: Publish to PyPI
-on:
-  release:
-    types: [published]
-jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-      - run: pip install cibuildwheel
-      - run: cibuildwheel --output-dir dist
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wheels-${{ matrix.os }}
-          path: dist
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-      - run: pip install twine
-      - run: twine upload wheels-*/*
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-```
-
-## Dependencies
-
-| Platform | Dependencies |
-|----------|--------------|
-| Rendering | Vulkan SDK |
-| macOS | Cocoa, Metal, QuartzCore |
-| Linux | X11 or Wayland |
-| Windows | Win32 API (user32, gdi32) |
-| Python | cffi >= 1.16.0 |
-
-## Platform Support
-
-| Platform | Window System | Status |
-|----------|---------------|--------|
-| macOS | Cocoa + Metal | ✅ Full Support |
-| Linux | X11 | ✅ Full Support |
-| Linux | Wayland | ✅ Full Support |
-| Windows | Win32 | ✅ Full Support |
-
-## C Development
-
-After `pip install baba-gui`, you can use Baba for C GUI development:
-
-```bash
-# Get development paths
-python -c "import baba; print(baba.get_include_dir())"  # Headers
-python -c "import baba; print(baba.get_lib_path())"     # Library
-```
-
-```bash
-# Compile your C app (macOS example)
-INCLUDE=$(python -c "import baba; print(baba.get_include_dir())")
-LIB=$(python -c "import baba; import os; print(os.path.dirname(baba.get_lib_path()))")
-
-clang main.c -I"$INCLUDE" -L"$LIB" -lbaba \
-    -framework Cocoa -framework Metal -lvulkan -o myapp
-```
-
-See [C Development Guide](docs/C_DEVELOPMENT.md) for details.
-
-## Building & Publishing
-
-### Build Native Library (Current Platform)
-
-```bash
-# Unix (macOS/Linux)
-./build_all.sh
-
-# Windows (MSYS2 MinGW)
-./build_all.sh
-```
-
-This builds the library for the **current platform only**.
-
-### Cross-Platform Builds
-
-For production releases, use **GitHub Actions** to build on all platforms:
-
-1. Push to `main` branch or create a release
-2. GitHub Actions builds macOS, Linux, and Windows versions
-3. Artifacts are combined and published to PyPI
-
-To trigger a PyPI release:
-1. Go to GitHub → Releases → Draft a new release
-2. Tag the release (e.g., `v0.1.2`)
-3. Publish - GitHub Actions will build and upload to PyPI
-
-### Manual Multi-Platform Build
-
-If you need to build all platforms locally:
-
-1. **macOS**: Run on macOS machine
-2. **Linux**: Run on Linux machine or use Docker
-3. **Windows**: Run on Windows with MSYS2 MinGW
-
-Then manually copy libraries to `python/baba/lib/`:
-```
-python/baba/lib/
-├── libbaba_macos.a
-├── libbaba_linux.a
-└── libbaba_windows.a
-```
-
-### Build & Upload to PyPI (Manual)
-
-```bash
-# Build native library
-./build_all.sh
-
-# Build Python package
-pip install build twine
-python -m build
-
-# Upload to PyPI
-twine upload dist/*
-```
-
-### GitHub Actions (Recommended for Multi-Platform)
-
-For production releases, use GitHub Actions to build on native platforms:
-
-```yaml
-# .github/workflows/build.yml
-jobs:
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: ./build_all.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lib-macos
-          path: dist/lib/macos/*.a
-
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: ./build_all.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lib-linux
-          path: dist/lib/linux-x64/*.a
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: build_all.bat
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lib-windows
-          path: dist/lib/windows-x64/*.a
-```
+| 平台 | 窗口系统 | 按钮/标签 | 表格 | 图片 | 文件对话框 |
+|------|----------|-----------|------|------|------------|
+| macOS | Cocoa | NSButton/NSTextField | NSTableView | NSImageView | NSOpenPanel |
+| Windows | Win32 | BUTTON/STATIC | LISTBOX | STATIC BITMAP | GetOpenFileName |
+| Linux | X11 | 手绘 | 手绘列表 | 基础 | zenity(可选) |
 
 ## License
 
-MIT License - see LICENSE file
+MIT
