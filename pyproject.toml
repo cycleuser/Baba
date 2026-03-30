@@ -1,91 +1,36 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "cffi>=1.16.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "baba-gui"
-version = "0.1.3"
-description = "A lightweight, cross-platform C GUI framework with Python bindings"
+version = "0.3.0"
+description = "Simple cross-platform GUI library - pure Python, no compilation needed"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
-dependencies = ["cffi>=1.16.0"]
-keywords = ["gui", "vulkan", "cross-platform", "lightweight"]
+dependencies = [
+    "pyobjc>=9.0; sys_platform == 'darwin'",
+]
+keywords = ["gui", "cross-platform", "native", "simple", "lightweight"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: C",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Software Development :: User Interfaces",
-    "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
-
-[project.optional-dependencies]
-dev = ["pytest>=7.0", "pytest-cov", "black", "ruff"]
 
 [project.urls]
 Homepage = "https://github.com/cycleuser/Baba"
-Documentation = "https://github.com/cycleuser/Baba#readme"
 Repository = "https://github.com/cycleuser/Baba.git"
-Issues = "https://github.com/cycleuser/Baba/issues"
 
 [tool.setuptools.packages.find]
 where = ["python"]
 
 [tool.setuptools.package-data]
-baba = ["include/**/*", "lib/**/*"]
-
-[tool.cibuildwheel]
-build = "cp39-* cp310-* cp311-* cp312-*"
-skip = "pp* *-musllinux_*"
-test-requires = "pytest"
-test-command = "pytest {project}/python/tests -v"
-
-[tool.cibuildwheel.macos]
-archs = "x86_64 arm64"
-environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
-before-all = [
-    "brew install vulkan-loader vulkan-headers molten-vk cmake ninja",
-    "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF",
-    "cmake --build build",
-    "mkdir -p python/baba/lib python/baba/include",
-    "cp build/libbaba.a python/baba/lib/libbaba_macos.a",
-    "cp -r dist/include/* python/baba/include/",
-]
-
-[tool.cibuildwheel.linux]
-archs = "x86_64"
-before-all = [
-    "apt-get update && apt-get install -y libvulkan-dev libx11-dev libwayland-dev cmake ninja-build",
-    "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF",
-    "cmake --build build",
-    "mkdir -p python/baba/lib python/baba/include",
-    "cp build/libbaba.a python/baba/lib/libbaba_linux.a",
-    "cp -r dist/include/* python/baba/include/",
-]
-
-[tool.cibuildwheel.windows]
-archs = "AMD64"
-before-all = [
-    "choco install vulkan-sdk cmake ninja -y",
-    "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBABA_BUILD_EXAMPLES=OFF -DBABA_BUILD_TESTS=OFF",
-    "cmake --build build",
-    "if not exist python\\baba\\lib mkdir python\\baba\\lib",
-    "if not exist python\\baba\\include mkdir python\\baba\\include",
-    "copy build\\libbaba.a python\\baba\\lib\\libbaba_windows.a",
-    "xcopy /e /i /y dist\\include\\* python\\baba\\include\\",
-]
-
-[tool.black]
-line-length = 100
-target-version = ["py39", "py310", "py311", "py312"]
-
-[tool.ruff]
-line-length = 100
-select = ["E", "F", "W", "I", "UP"]
+baba = ["*.py"]
